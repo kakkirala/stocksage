@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>StockSage — NSE Stock Intelligence</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', system-ui, sans-serif; background: #0a0f1e;
+         color: #e2e8f0; min-height: 100vh; display: flex; flex-direction: column; }
+  header { background: linear-gradient(135deg, #1e3a8a, #0e7490); padding: 28px 20px;
+           text-align: center; box-shadow: 0 4px 20px rgba(0,0,0,.4); }
+  header h1 { font-size: 2em; letter-spacing: 1px; }
+  header p { color: #bae6fd; margin-top: 6px; font-size: .95em; }
+  #chat { flex: 1; max-width: 760px; width: 100%; margin: 0 auto; padding: 20px;
+          overflow-y: auto; }
+  .msg { border-radius: 16px; padding: 14px 18px; margin: 12px 0; max-width: 85%;
+         line-height: 1.5; animation: fade .3s ease; }
+  @keyframes fade { from { opacity: 0; transform: translateY(8px); } }
+  .q { background: #1d4ed8; margin-left: auto; border-bottom-right-radius: 4px; }
+  .a { background: #16213a; border: 1px solid #1e3a5f; border-bottom-left-radius: 4px; }
+  .a b { color: #4ade80; }
+  details { margin-top: 10px; font-size: .82em; color: #7dd3fc; cursor: pointer; }
+  pre { background: #0a0f1e; padding: 10px; border-radius: 8px; margin-top: 6px;
+        white-space: pre-wrap; color: #94a3b8; }
+  .chips { max-width: 760px; margin: 0 auto; padding: 0 20px 10px; display: flex;
+           gap: 8px; flex-wrap: wrap; }
+  .chip { background: #16213a; border: 1px solid #1e3a5f; color: #7dd3fc;
+          padding: 8px 14px; border-radius: 20px; font-size: .85em; cursor: pointer; }
+  .chip:hover { background: #1e3a5f; }
+  #bar { max-width: 760px; width: 100%; margin: 0 auto; padding: 0 20px 24px;
+         display: flex; gap: 10px; }
+  input { flex: 1; padding: 14px 18px; border-radius: 24px; border: 1px solid #1e3a5f;
+          background: #16213a; color: #e2e8f0; font-size: 16px; outline: none; }
+  input:focus { border-color: #38bdf8; }
+  button { padding: 14px 28px; border-radius: 24px; border: none; font-size: 16px;
+           font-weight: bold; background: linear-gradient(135deg, #38bdf8, #818cf8);
+           color: #0a0f1e; cursor: pointer; }
+  .typing { color: #64748b; font-style: italic; }
+  .typing::after { content: '…'; animation: dots 1s infinite; }
+  @keyframes dots { 0%,100% { opacity: .2; } 50% { opacity: 1; } }
+  footer { text-align: center; color: #475569; font-size: .8em; padding: 12px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>📈 StockSage</h1>
+  <p>NSE Stock Intelligence · Open-book RAG over Jan 2017 market data</p>
+</header>
+<div id="chat">
+  <div class="msg a"><b>StockSage:</b> Namaste! 🙏 Ask me about any NSE stock's price in January 2017 — I look it up from real market data, never guess.</div>
+</div>
+<div class="chips">
+  <div class="chip" onclick="fill(this)">What was SBIN's closing price on 2017-01-31?</div>
+  <div class="chip" onclick="fill(this)">What was 3MINDIA's closing price on 2017-01-23?</div>
+  <div class="chip" onclick="fill(this)">Which stock had the highest volume on 2017-01-15?</div>
+</div>
+<div id="bar">
+  <input id="q" placeholder="Ask about a stock…" autocomplete="off"/>
+  <button onclick="ask()">Ask</button>
+</div>
+<footer>Built from scratch · Qdrant + all-MiniLM-L6-v2 + Ollama llama3.2</footer>
+<script>
+function fill(el) { document.getElementById('q').value = el.innerText; ask(); }
+async function ask() {
+  const input = document.getElementById('q');
+  const chat = document.getElementById('chat');
+  const question = input.value.trim();
+  if (!question) return;
+  chat.innerHTML += `<div class="msg q">${question}</div>`;
+  chat.innerHTML += `<div class="msg a typing" id="wait"><b>StockSage:</b> searching 35,896 records</div>`;
+  input.value = '';
+  chat.scrollTop = chat.scrollHeight;
+  try {
+    const res = await fetch('/ask', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({question})
+    });
+    const data = await res.json();
+    document.getElementById('wait').remove();
+    chat.innerHTML += `<div class="msg a"><b>StockSage:</b> ${data.answer}
+      <details><summary>📚 Retrieved context — the open-book proof</summary>
+      <pre>${data.context}</pre></details></div>`;
+  } catch(e) {
+    document.getElementById('wait').remove();
+    chat.innerHTML += `<div class="msg a"><b>StockSage:</b> ⚠️ Couldn't reach the server. Is uvicorn running?</div>`;
+  }
+  chat.scrollTop = chat.scrollHeight;
+}
+document.getElementById('q').addEventListener('keydown', e => {
+  if (e.key === 'Enter') ask();
+});
+</script>
+</body>
+</html>
